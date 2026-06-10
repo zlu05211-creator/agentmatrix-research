@@ -126,11 +126,47 @@ def tsmin(series, n):
     """ts_min / TSMIN: 滚动最小值"""
     return ts_min(series, n)
 
+####正确的ts_argmax and ts_argmin with 1-based###
+def ts_argmax(
+    df: pd.DataFrame,
+    value_col: str,
+    window: int,
+    *,
+    code_col: str = "code",
+    min_periods: int | None = None,
+) -> pd.Series:
+    """1-based position of the rolling-window maximum (Ts_ArgMax semantics)."""
+    min_obs = window if min_periods is None else min_periods
 
-def ts_argmax(series, n):
-    """Ts_ArgMax: 过去n天最大值所在位置(0-based)"""
-    return series.rolling(n).apply(np.argmax, raw=True)
+    def _argmax_1based(values: np.ndarray) -> float:
+        if np.isnan(values).any():
+            return np.nan
+        return float(np.argmax(values) + 1)
 
+    return df.groupby(code_col)[value_col].transform(
+        lambda x: x.rolling(window, min_periods=min_obs).apply(_argmax_1based, raw=True)
+    )
+
+def ts_argmin(
+    df: pd.DataFrame,
+    value_col: str,
+    window: int,
+    *,
+    code_col: str = "code",
+    min_periods: int | None = None,
+) -> pd.Series:
+    """1-based position of the rolling-window minimum (Ts_ArgMin semantics)."""
+    min_obs = window if min_periods is None else min_periods
+
+    def _argmin_1based(values: np.ndarray) -> float:
+        if np.isnan(values).any():
+            return np.nan
+        return float(np.argmin(values) + 1)
+
+    return df.groupby(code_col)[value_col].transform(
+        lambda x: x.rolling(window, min_periods=min_obs).apply(_argmin_1based, raw=True)
+    )
+######finish updating ts_argmin and ts_argmax#####
 
 def signed_power(series: pd.Series, power: float) -> pd.Series:
     """Return sign-preserving power transform."""
